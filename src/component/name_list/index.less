@@ -1,11 +1,28 @@
 .name-list-block {
+  width: 100%;
+  overflow-x: auto;
+  
   .name-list {
-    // display: flex;
-    // flex-direction: row;
-    // width: 600px;
-    // flex-wrap: wrap;
+    width: 100%;
   }
-  //   .item {
-  //     margin-left: 10px;
-  //   }
+  
+  // 响应式表格样式
+  .ant-table {
+    font-size: 14px;
+    
+    // 在小屏幕上调整表格样式
+    @media (max-width: 768px) {
+      font-size: 12px;
+      
+      .ant-table-cell {
+        padding: 6px 8px;
+      }
+    }
+  }
+  
+  // 确保表格在小屏幕上有更好的滚动体验
+  @media (max-width: 768px) {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
 }

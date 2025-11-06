@@ -64,6 +64,16 @@ let default_是否乱序展示候选名 = utils.getValueByStorage<boolean>(
   true
 );
 
+// 获取屏幕宽度并根据宽度确定合适的列数
+const getResponsiveColumnCount = (): number => {
+  const width = window.innerWidth;
+  if (width >= 1200) return 10;
+  if (width >= 992) return 8;
+  if (width >= 768) return 5;
+  if (width >= 480) return 3;
+  return 2;
+};
+
 const store = proxy<{
   previewNameList: CommonType.Type_Name[];
   totalNameCount: number;
@@ -96,7 +106,7 @@ const store = proxy<{
   /**
    * 每行展示x列
    */
-  columnCount: 10,
+  columnCount: getResponsiveColumnCount(),
   status: {
     isLoading: false,
     currentTab: Const.Choose_Type_Option.古人云,
@@ -125,8 +135,26 @@ export default () => {
   const char_姓_末尾字_PinyinList = utils.getPinyinOfChar(char_姓_末尾字);
   let pinyin_of_姓_末尾字 = char_姓_末尾字_PinyinList[0];
 
-  const const_col_标题_span = 4;
-  const const_col_输入框_span = 20;
+  // 根据屏幕宽度确定列宽比例
+  const getColumnSpans = () => {
+    const width = window.innerWidth;
+    if (width < 768) {
+      return { title: 24, input: 24 }; // 在小屏幕上单列显示
+    }
+    return { title: 4, input: 20 }; // 大屏幕保持原有比例
+  };
+  
+  const { title: const_col_标题_span, input: const_col_输入框_span } = getColumnSpans();
+  
+  // 监听窗口大小变化，更新列数
+  useEffect(() => {
+    const handleResize = () => {
+      store.columnCount = getResponsiveColumnCount();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   let flag姓氏最后一字是否为多音字 = char_姓_末尾字_PinyinList.length > 1;
   let flag已确认姓氏最后一字发音 = true;
@@ -412,14 +440,23 @@ export default () => {
       ></Divider>
 
       <div>
-        <Typography>
-          <Typography.Title level={5}>候选字库</Typography.Title>
-        </Typography>
-        <List
-          itemLayout="horizontal"
-          grid={{ gutter: 16, xxl: 6, xl: 6, md: 3, lg: 5, column: 3 }}
-          dataSource={listConfigList}
-          renderItem={(item, index) => (
+          <Typography>
+            <Typography.Title level={5}>候选字库</Typography.Title>
+          </Typography>
+          <List
+            itemLayout="horizontal"
+            grid={{ 
+              gutter: 16, 
+              xxl: 6, 
+              xl: 5, 
+              lg: 4, 
+              md: 3, 
+              sm: 2, 
+              xs: 1,
+              column: 3 
+            }}
+            dataSource={listConfigList}
+            renderItem={(item, index) => (
             <List.Item
               className={
                 item.title === snapshot.status.currentTab ? "selected" : ""
@@ -431,20 +468,20 @@ export default () => {
               }}
             >
               <Card hoverable type="inner" title={item.title}>
-                <Card.Meta description={item.description} />
-                <Typography>
-                  <Typography.Paragraph>
-                    {item.comment}
-                    {item.optionCount > 0 ? ` , 共${item.optionCount}项` : ""}
-                  </Typography.Paragraph>
-                </Typography>
-              </Card>
+                 <Card.Meta description={item.description} />
+                 <Typography>
+                   <Typography.Paragraph>
+                     {item.comment}
+                     {item.optionCount > 0 ? ` , 共${item.optionCount}项` : ""}
+                   </Typography.Paragraph>
+                 </Typography>
+               </Card>
             </List.Item>
           )}
         />
       </div>
       <p></p>
-      <Row align="middle">
+      <Row align="middle" className="mb-4">
         <Col span={const_col_标题_span}>
           <Button
             type="primary"
@@ -507,8 +544,8 @@ export default () => {
             生成候选方案
           </Button>
         </Col>
-        <Col span={const_col_输入框_span}>
-          乱序展示候选名&nbsp;
+        <Col span={const_col_输入框_span} className="mt-2" style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+          乱序展示候选名
           <Switch
             onChange={(checked) => {
               store.status.enableRandomNameList = checked;
@@ -536,8 +573,8 @@ export default () => {
       </Row>
       <p></p>
       {ele诗云字库}
-      <div>
-        <span>按音韵过滤姓名:&nbsp;</span>
+      <div style={{marginBottom: '16px'}}>
+        <div style={{marginBottom: '8px', fontWeight: 'bold'}}>按音韵过滤姓名:</div>
         <Radio.Group
           defaultValue={snapshot.status.genderType}
           onChange={(event) => {
@@ -548,6 +585,7 @@ export default () => {
             );
             Tools.reset();
           }}
+          style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}
         >
           <Radio.Button value={Const.Gender_Type.偏男宝}>
             {Const.Gender_Type.偏男宝}
@@ -564,48 +602,49 @@ export default () => {
       </div>
       <p></p>
       <div>
-        <Button
-          type="primary"
-          shape="round"
-          ghost
-          icon={<DownloadOutlined />}
-          disabled={totalNameList.length === 0}
-          onClick={async () => {
-            await utils.asyncSleep(10);
-            let nameList = totalNameList;
+        <Space wrap style={{display: 'flex', gap: '12px', marginBottom: '16px'}}>
+          <Button
+            type="primary"
+            shape="round"
+            ghost
+            icon={<DownloadOutlined />}
+            disabled={totalNameList.length === 0}
+            onClick={async () => {
+              await utils.asyncSleep(10);
+              let nameList = totalNameList;
 
-            let columns = [];
-            for (let i = 0; i < nameList.length; i++) {
-              let item = nameList[i];
-              columns.push(`${item.demoStr}`);
-            }
-            if (snapshot.status.enableRandomNameList) {
-              columns.sort(() => {
-                return Math.random() - 0.5;
+              let columns = [];
+              for (let i = 0; i < nameList.length; i++) {
+                let item = nameList[i];
+                columns.push(`${i + 1}. ${item.demoStr}`);
+              }
+              if (snapshot.status.enableRandomNameList) {
+                columns.sort(() => {
+                  return Math.random() - 0.5;
+                });
+              } else {
+                columns.sort((a, b) => {
+                  return a.localeCompare(b);
+                });
+              }
+
+              let str = "姓名\n" + columns.join("\n");
+
+              let blob = new Blob([str], {
+                type: "text/plain;charset=utf-8",
               });
-            } else {
-              columns.sort((a, b) => {
-                return a.localeCompare(b);
-              });
-            }
-
-            let str = "姓名\n" + columns.join("\n");
-
-            let blob = new Blob([str], {
-              type: "text/plain;charset=utf-8",
-            });
-            saveAs(blob, "所有可能的姓名发音列表.txt");
-            message.info(
-              `所有可能的姓名发音列表生成完毕, 共${nameList.length}条`
-            );
-          }}
-        >
-          下载所有姓名方案在电脑查看
-        </Button>
-        <Divider type="vertical"></Divider>
-        <Button ghost type="primary" shape="round" onClick={showDrawer}>
-          原理介绍
-        </Button>
+              saveAs(blob, `姓名_${input_姓氏}_候选方案.txt`);
+              message.info(
+                `所有可能的姓名发音列表生成完毕, 共${nameList.length}条`
+              );
+            }}
+          >
+            下载所有姓名方案
+          </Button>
+          <Button ghost type="primary" shape="round" onClick={showDrawer}>
+            原理介绍
+          </Button>
+        </Space>
       </div>
       <Drawer
         size="large"
@@ -620,12 +659,12 @@ export default () => {
         姓氏:{input_姓氏}
         {tip}
       </p>
-      <Card title="" bordered={false} loading={snapshot.status.isLoading}>
-        <NameList
-          nameList={snapshot.previewNameList as CommonType.Type_Name[]}
-          columnCount={snapshot.columnCount}
-        ></NameList>
-      </Card>
+      <Card title="" variant="outlined" loading={snapshot.status.isLoading}>
+          <NameList
+            nameList={snapshot.previewNameList as CommonType.Type_Name[]}
+            columnCount={snapshot.columnCount}
+          ></NameList>
+        </Card>
     </div>
   );
 };
